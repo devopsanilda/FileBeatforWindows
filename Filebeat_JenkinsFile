@@ -1,0 +1,54 @@
+pipeline {
+    agent { node { label '---' } }
+
+    environment {
+        PATH = "/usr/local/bin:$PATH"
+    }
+
+    stages {        
+       
+        stage('Check Playbook') {
+            steps {
+                sh '''
+				 date
+				 echo  "Target hosts: ${target}"
+				 echo  "Environment: ${environment}"
+				 pwd
+				 sudo ls -la  /etc/ansible/Provisioning/ELK/provision_ELK_filebeat_appLogs_agentservice.yml
+				 sudo ls -la  /etc/ansible/Provisioning/ELK/provision_ELK_filebeat_iisLogs_agentservice.yml
+				 sudo ls -la /etc/ansible/Provisioning/ELK/provision_ELK_filebeat_winlogbeat_agentservice.yml
+				 '''
+            }
+        }
+		
+		
+				stage('Check&Run Provisioning for Applog') {
+            steps {
+                sh '''
+			    sudo ansible-playbook /etc/ansible/Provisioning/ELK/provision_ELK_filebeat_appLogs_agentservice.yml -e "my_target=${target} my_environment=${environment}"  
+			
+			    '''
+            }
+        }
+		
+		stage('Check&Run Provisioning for IISlog') {
+            steps {
+                sh '''
+			    sudo ansible-playbook /etc/ansible/Provisioning/ELK/provision_ELK_filebeat_iisLogs_agentservice.yml -e "my_target=${target} my_environment=${environment}"  
+			
+			    '''
+            }
+        }
+        
+		stage('Check&Run Provisioning for Winlogbeat') {
+            steps {
+                sh '''
+			    sudo ansible-playbook /etc/ansible/Provisioning/ELK/provision_ELK_filebeat_winlogbeat_agentservice.yml -e "my_target=${target} my_environment=${environment}"  
+			
+			    '''
+            }
+        }
+		
+    }
+   
+}
