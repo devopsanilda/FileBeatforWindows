@@ -1,0 +1,58 @@
+---
+- name:  Ensure provisioning of ELK AppLog agent services
+  hosts: "{{my_target }}"
+  gather_facts: no
+  ignore_errors: True
+  vars:
+    my_environment: "{{ my_environment }}"
+
+  tasks:
+  #ELK Filebeat Log
+  - name: Obtain information about ElasticStack folder
+    win_stat:
+      path: C:\Program Files\ElasticStack\ELK_filebeat_appLogs
+    register: folder_info
+    when: host_role == "ui" or host_role=="app" or host_role=="gw" or host_role=="tfs"
+
+
+  - name: Check service status
+    win_service:
+      name: ELK_filebeat_appLogs
+    register: service_info
+    when: host_role == "ui" or host_role=="app" or host_role=="gw" or host_role=="tfs"
+  - debug: msg="{{service_info}}"
+
+
+
+  - name: Block
+    block:
+      - name: Ensure ELK Filebeat Setup and config files chage only if modified
+        win_get_url:
+          url: http://serverhostname/ToolConfigFiles/ElasticStackAgent/{{ my_environment }}/ELK_filebeat_appLogs.zip
+          dest: C:\
+          force: yes
+
+      - name: Decompress ELK_filebeat_appLogs
+        win_unzip:
+          src: C:\ELK_filebeat_appLogs.zip
+          dest: C:\Program Files\ElasticStack\
+          delete_archive: yes
+
+      - name: Copy crt
+        win_copy:
+          src: C:\Program Files\ElasticStack\ELK_filebeat_appLogs\develk-logstash.crt
+          dest: C:\Program Files\ElasticStack\
+          remote_src: True
+
+      - name: Start/Ensure ELK Filebeat Applogs Agent Services
+        win_service:
+          name: ELK_filebeat_appLogs
+          state: started
+          path: C:\Program Files\ElasticStack\ELK_filebeat_appLogs\filebeat.exe -c "C:\Program Files\ElasticStack\ELK_filebeat_appLogs\filebeat.yml" -path.home "C:\Program Files\ElasticStack\ELK_filebeat_appLogs"
+          description: This service runs an agent for Jenkins automation server that ensure DSC with ANSIBLE
+          username: LocalSystem
+          password: ""
+          start_mode: auto
+    when:
+      - host_role == "ui" or host_role=="app" or host_role=="gw" or host_role=="tfs"
+      - folder_info.stat.exists == false or service_info.state != "running"
