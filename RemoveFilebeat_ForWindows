@@ -1,0 +1,18 @@
+---
+#This playbook uses for Healtcheck
+- name: Check Healt for ansible access to nodes
+  hosts: "{{ my_target }}"
+  gather_facts: yes
+
+  tasks:
+  - name: Check Windows Hosts
+    win_ping:
+    when: ansible_os_family == "Windows"
+
+  - name: remove ELK filebeat windows services
+    win_shell: "{{ item }}"
+    with_items:
+    -   'If (Get-Service ELK_filebeat_appLogs -ErrorAction SilentlyContinue) {Stop-Service ELK_filebeat_appLogs; sc.exe delete ELK_filebeat_appLogs} else {Write-Host "Servis yok"}'
+    -   'If (Get-Service ELK_filebeat_iisLogs -ErrorAction SilentlyContinue) {Stop-Service ELK_filebeat_iisLogs; sc.exe delete ELK_filebeat_iisLogs} else {Write-Host "Servis yok"}'
+    -   'If (Get-Service ELK_winlogbeat_eventLogs -ErrorAction SilentlyContinue) {Stop-Service ELK_winlogbeat_eventLogs; sc.exe delete ELK_winlogbeat_eventLogs} else {Write-Host "Servis yok"}'
+    -   'If (Test-Path "C:\Program Files\ElasticStack\") {Remove-Item "C:\Program Files\ElasticStack\" -recurse -force}'
