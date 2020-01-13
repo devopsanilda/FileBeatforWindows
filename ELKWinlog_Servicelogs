@@ -1,0 +1,60 @@
+---
+- name:  Ensure provisioning of ELK winlogbeat services
+  hosts: "{{my_target }}"
+  gather_facts: no
+  ignore_errors: True
+  vars:
+    my_environment: "{{ my_environment }}"
+
+  tasks:
+  #ELK Winlogbeat Event log
+  - name: Obtain information about ElasticStack Winlogbeat folder
+    win_stat:
+      path: C:\Program Files\ElasticStack\ELK_winlogbeat_eventLogs
+    register: folder_info
+    when: host_role == "ui" or host_role=="app" or host_role=="gw"
+
+  - name: Check service status
+    win_service:
+      name: ELK_winlogbeat_eventLogs
+    register: service_info
+    when: host_role == "ui" or host_role=="app" or host_role=="gw" or host_role=="tfs"
+  - debug: msg="{{service_info}}"
+
+
+  - name: Block
+    block:
+      - name: Ensure ELK Winlogbeat EventLogs Setup and config files chage only if modified
+        win_get_url:
+          url: http://serverhostname/ToolConfigFiles/ElasticStackAgent/{{ my_environment }}/ELK_winlogbeat_eventLogs.zip
+          dest: C:\
+          force: yes
+          ignore_errors: True
+
+      - name: Decompress ELK_filebeat_winlogbeat
+        win_unzip:
+          src: C:\ELK_winlogbeat_eventLogs.zip
+          dest: C:\Program Files\ElasticStack\
+          delete_archive: yes
+          ignore_errors: True
+
+      - name: Copy crt
+        win_copy:
+          src: C:\Program Files\ElasticStack\ELK_winlogbeat_eventLogs\develk-logstash.crt
+          dest: C:\Program Files\ElasticStack\
+          remote_src: True
+
+      - name: Ensure ELK WinLogBeaat EventLog Agent Services
+        win_service:
+          name: ELK_winlogbeat_eventLogs
+          state: started
+          path: C:\Program Files\ElasticStack\ELK_winlogbeat_eventLogs\winlogbeat.exe -c "C:\Program Files\ElasticStack\ELK_winlogbeat_eventLogs\winlogbeat.yml" -path.home "C:\Program Files\ElasticStack\ELK_winlogbeat_eventLogs"
+          display_name: ELK_winlogbeat_eventLogs
+          description: This service runs an agent for Jenkins automation server that ensure DSC with ANSIBLE
+          username: LocalSystem
+          password: ""
+          start_mode: auto
+          ignore_errors: True
+    when:
+      - host_role == "ui" or host_role=="app" or host_role=="gw"
+      - folder_info.stat.exists == false or service_info.state != "running"
